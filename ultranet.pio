@@ -63,6 +63,10 @@ sync1xxx:                  ; sync1xxx must be sync1000
 
 
 ; Master Clock output
+; Outputs I2S MCLK on specified pin
+; Frequency is 256xfs - ideal would be 256 x 48MHz = 12.288MHz
+; Actual frequency = 172MHz (sys clock) / 7 / 2 = 12.286MHz
+
 .program mclk
 .wrap_target
     set pins 1 [0]
@@ -71,15 +75,13 @@ sync1xxx:                  ; sync1xxx must be sync1000
 
 ; I2S send Master
 ; fs: 48kHz
-; PIO Clock freq: 15.36MHz (320fs@48kHz)
+; PIO Clock freq: 24.57MHz (172MHz / 7)
 ; Bit depth: 32bit
-; MSB of data word in out FIFO must be 0
-; Actual audio data therefore shifted 1 place left
 ; 
 
 .program i2s
 .side_set 2
-.define dly 3
+.define dly 3                           ; each cycle = 4 x data rate
 
             ;                   |----LRCLK
             ;                    |---BCLK    
