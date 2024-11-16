@@ -17,3 +17,5 @@ https://github.com/nyh-workshop/rpi-pico-i2sExample - I used the I2S output enco
 
 Thanks a lot to the authors of the two excellent projects above!
 
+Here is a pic of my prototype board. It's based on a PCB I made for Ultranet fan-out (one in, four out) as a "mini P16-D". I just use the input buffer chip (an MC3486) and the 5V power regulator. The rest of the board space I used to attach the pico (chinese mini knock-off) and the output decoder boards(PCM5102A modules from your favourite auction site).
+![PicoUltranetDecoder](https://github.com/user-attachments/assets/e9e0c4d6-15a5-412d-a558-9ded5bb5acc3)
