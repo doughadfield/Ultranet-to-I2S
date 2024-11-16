@@ -7,7 +7,7 @@ Dual Processors provide a very simple way to resolve the synchronisation issue b
 
 The third feature of the RPi Pico I found very useful is it's ability to over-clock. Running the system clock at 172MHz and dividing by 7 into the PIO modules gives an operating frequency very close to the digital audio streaming speed of 12.288MHz (48KHz sampling, 8 channels). I've run several "cheap" chinese pico knock-off boards at this frequency with no issues whatsoever (they all use the same RPi RP2040 chip, so this shouldn't be a surprise).
 
-The project uses the Raspberry Pi Foundation Pico C/C++ SDK and Visual Studio Code as the development environment.
+The project uses the Raspberry Pi Foundation Pico C/C++ SDK (V2.0.0) and Visual Studio Code as the development environment (with the RPi Pico Extension plugin).
 
 I've borrowed PIO program ideas from two excellent github projects:
 
