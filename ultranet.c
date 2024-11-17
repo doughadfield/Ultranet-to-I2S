@@ -10,6 +10,9 @@
 * We set cpu clock frequency as close to 172032KHz as possible
 * but can only set whole numbers of MHz, so 172000khz
 *
+* Ultranet audio sample depth is in fact 22 bits, not 24
+* So we mask the 2 LSBs when reading words from Ultranet stream
+*
 * Use PICO LED to indicate if we have a framing error
 * ie we get out of sync with the 8 subframes of the ultranet stream
 * if we don't detect start of frame sync in the right place, 
@@ -157,28 +160,28 @@ int main()
         if((sample & 0x3F) == 0x0000000B || (sample & 0x3F) == 0x0000000F)
         {
             // if we get here, sample contains the first subframe in Ultranet frame
-            samples[0] = (sample << 4) & 0xFFFFFE00;    // move 24 bits of audio into MSBs
+            samples[0] = (sample << 4) & 0xFFFFFC00;    // move 22 bits of audio into MSBs
 
             sample = pio_sm_get_blocking(pio0, SM);     // get next sample from Ultranet FIFO
-            samples[1] = (sample << 4) & 0xFFFFFE00;    // move 24 bits of audio into MSBs
+            samples[1] = (sample << 4) & 0xFFFFFC00;    // move 22 bits of audio into MSBs
 
             sample = pio_sm_get_blocking(pio0, SM);     // get next sample from Ultranet FIFO
-            samples[2] = (sample << 4) & 0xFFFFFE00;    // move 24 bits of audio into MSBs
+            samples[2] = (sample << 4) & 0xFFFFFC00;    // move 22 bits of audio into MSBs
 
             sample = pio_sm_get_blocking(pio0, SM);     // get next sample from Ultranet FIFO
-            samples[3] = (sample << 4) & 0xFFFFFE00;    // move 24 bits of audio into MSBs
+            samples[3] = (sample << 4) & 0xFFFFFC00;    // move 22 bits of audio into MSBs
 
             sample = pio_sm_get_blocking(pio0, SM);     // get next sample from Ultranet FIFO
-            samples[4] = (sample << 4) & 0xFFFFFE00;    // move 24 bits of audio into MSBs
+            samples[4] = (sample << 4) & 0xFFFFFC00;    // move 22 bits of audio into MSBs
 
             sample = pio_sm_get_blocking(pio0, SM);     // get next sample from Ultranet FIFO
-            samples[5] = (sample << 4) & 0xFFFFFE00;    // move 24 bits of audio into MSBs
+            samples[5] = (sample << 4) & 0xFFFFFC00;    // move 22 bits of audio into MSBs
 
             sample = pio_sm_get_blocking(pio0, SM);     // get next sample from Ultranet FIFO
-            samples[6] = (sample << 4) & 0xFFFFFE00;    // move 24 bits of audio into MSBs
+            samples[6] = (sample << 4) & 0xFFFFFC00;    // move 22 bits of audio into MSBs
 
             sample = pio_sm_get_blocking(pio0, SM);     // get next sample from Ultranet FIFO
-            samples[7] = (sample << 4) & 0xFFFFFE00;    // move 24 bits of audio into MSBs
+            samples[7] = (sample << 4) & 0xFFFFFC00;    // move 22 bits of audio into MSBs
         }
         else    // if we get here, we looked for start frame in the right place, but didn't find it
         {

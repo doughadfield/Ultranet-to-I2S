@@ -3,11 +3,12 @@
     "configurations": [
         {
             "name": "Pico Debug (Cortex-Debug)",
-            "cwd": "${workspaceRoot}",
+            "cwd": "${userHome}/.pico-sdk/openocd/0.12.0+dev/scripts",
             "executable": "${command:raspberry-pi-pico.launchTargetPath}",
             "request": "launch",
             "type": "cortex-debug",
             "servertype": "openocd",
+            "serverpath": "${userHome}/.pico-sdk/openocd/0.12.0+dev/openocd.exe",
             "gdbPath": "${command:raspberry-pi-pico.getGDBPath}",
             "device": "${command:raspberry-pi-pico.getChipUppercase}",
             "configFiles": [
@@ -54,7 +55,7 @@
             "MIMode": "gdb",
             "miDebuggerPath": "${command:raspberry-pi-pico.getGDBPath}",
             "miDebuggerServerAddress": "localhost:3333",
-            "debugServerPath": "openocd",
+            "debugServerPath": "${userHome}/.pico-sdk/openocd/0.12.0+dev/openocd.exe",
             "debugServerArgs": "-f interface/cmsis-dap.cfg -f target/${command:raspberry-pi-pico.getTarget}.cfg -c \"adapter speed 5000\"",
             "serverStarted": "Listening on port .* for gdb connections",
             "filterStderr": true,
