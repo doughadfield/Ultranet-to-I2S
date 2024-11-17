@@ -30,6 +30,8 @@
 
 #include "ultranet.pio.h"
 
+#define CLOCKSPEED  172000      // 172000 for 7 slots per bit incoming Ultranet stream
+#define PICO_LED 25             // LED pin - to indicate ultranet framing error
 // Ultranet input and MCLK state machines use pio0
 #define ULTRANET_PIN 0          // ultranet input pin
 #define SM 0                    // state machine to use for Ultranet input
@@ -40,8 +42,6 @@
 #define I2S2_PINS 6             // base for I2S output pins (3 pins starting point)
 #define I2S3_PINS 9             // base for I2S output pins (3 pins starting point)
 #define I2S4_PINS 12            // base for I2S output pins (3 pins starting point)
-#define CLOCKSPEED  172000      // 172000 for 7 slots per bit incoming Ultranet stream
-#define PICO_LED 25             // LED pin - to indicate ultranet framing error
 
 volatile uint32_t samples[9];   // array of samples read from Ultranet stream
 
@@ -94,7 +94,8 @@ void core1_entry(void)                                  // Core1 starts executii
     i2s_pio_init(pio1, 1, I2S2_PINS, i2s_offset);
     i2s_pio_init(pio1, 2, I2S3_PINS, i2s_offset);
     i2s_pio_init(pio1, 3, I2S4_PINS, i2s_offset);
-    sleep_ms(200);                                      // wait for samples to start
+    sleep_ms(200);                                      // wait for incoming samples to start
+    // ensure there is data in each output FIFO before starting the state machines
     pio_sm_put_blocking(pio1, 0, samples[0]);           // subframe 1 goes to I2S0 channel 1
     pio_sm_put_blocking(pio1, 1, samples[2]);           // subframe 3 goes to I2S1 channel 1
     pio_sm_put_blocking(pio1, 2, samples[4]);           // subframe 5 goes to I2S2 channel 1
@@ -106,7 +107,7 @@ void core1_entry(void)                                  // Core1 starts executii
 
     pio_set_sm_mask_enabled(pio1, 0xF, true);           // enable all I2S state machines at the same instant
 
-    while(true)                                         // asynchronously output samples forever
+    while(true)                                         // output samples synchronised with I2S streams
     {
         pio_sm_put_blocking(pio1, 0, samples[0]);       // subframe 1 goes to I2S0 channel 1
         pio_sm_put_blocking(pio1, 1, samples[2]);       // subframe 3 goes to I2S1 channel 1
@@ -148,7 +149,7 @@ int main()
     while((sample & 0x3F) != 0x0000000B && (sample & 0x3F) != 0x0000000F)
     {
         sample = pio_sm_get_blocking(pio0, SM);         // get next sample from Ultranet FIFO
-    }
+    }                                                   // "sample" now contains start frame
 
     while (true)
     {
@@ -179,7 +180,7 @@ int main()
             sample = pio_sm_get_blocking(pio0, SM);     // get next sample from Ultranet FIFO
             samples[7] = (sample << 4) & 0xFFFFFE00;    // move 24 bits of audio into MSBs
         }
-        else
+        else    // if we get here, we looked for start frame in the right place, but didn't find it
         {
             if(gpio_get(PICO_LED) == 0)
                 gpio_put(PICO_LED, 1);                  // turn on LED to indicate frame error

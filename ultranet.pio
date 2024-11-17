@@ -10,16 +10,19 @@
 ; each 32bit subframe is decoded and passed to input FIFO, with sync byte in LSB
 ; Mask lower 6 bits of 32bit word and compare with "0x0B" and "0x0F" to detect start frame
 ;
+; Biphase bitstream is designed to be unpolarised, but Ultranet always
+; starts sync sequence with rising edge (as preceeding parity bit restores polarity)
+;
 
 .pio_version 0              ; specify RP2040 instruction set
 
 .program ultranet
 
-.define cy 7                ; 24.576 * 7 = 172.032MHz - run cpu clock at 172MHz
-.define lp 3                ; sample mid-point of incoming pulses
+.define cy 7                ; cycle delay: 24.576 * 7 = 172.032MHz - run cpu clock at 172MHz
+.define mp 3                ; sample mid-point of incoming pulses (half cycle delay)
 
-; X register is used as a source of "1"s for shifting into isr
-;    (only LSB 2 bits are used to emit 0b1 or 0b11)
+; X register is used as a source of "1"s for shifting into ISR
+;    (only LSB 2 bits are used to generate 0b1 or 0b11 to emit into input data word)
 
 public entry_point:
     set x 0x1F              ; set lower 5 bits of x register to "1" (0x0000001F)
@@ -29,43 +32,45 @@ public entry_point:
 ;                                                             (*) symbol latch with delay
 .wrap_target
 wait1:
-    wait 1 pin 0 [(cy-1)+lp] ; wait for 0 -> 1               :  0                1 + lp/cy
+    wait 1 pin 0 [(cy-1)+mp] ; wait for 0 -> 1             :  0                1 + mp/cy
 symbol_1x:
-    jmp pin symbol_11x     ; If symbol 11 -> go symbol_11x :  1 + lp/cy (*)    1 + (lp+1)/cy
-    in x, 1                ; else emit 0b1 (symbol 10)     :  1 + (lp+1)/cy    1 + (lp+2)/cy
-    jmp wait1              ; pin is 0, so wait for next 1  :  1 + (lp+2)/cy    1 + (lp+3)/cy
+    jmp pin symbol_11x     ; If symbol 11 -> go symbol_11x :  1 + mp/cy (*)    1 + (mp+1)/cy
+    in x, 1                ; else emit 0b1 (symbol 10)     :  1 + (mp+1)/cy    1 + (mp+2)/cy
+    jmp wait1              ; pin is 0, so wait for next 1  :  1 + (mp+2)/cy    1 + (mp+3)/cy
 symbol_11x:
-    nop [cy-2]             ; wait for centre of next pulse :  1 + (lp+1)/cy    2 + lp/cy
-    jmp pin sync111x       ; If symbol 111 -> go sync111x  :  2 + lp/cy (*)    2 + (lp+1)/cy (maximum delayed latch point)
-    in null, 1             ; else emit 0 (symbol 110)      :  2 + (lp+1)/cy    2 + (lp+2)/cy
-    jmp symbol_0x [cy-3]   ; go symbol_0x                  :  2 + (lp+2)/cy    3 + lp/cy (= 1 + lp/cy)
+    nop [cy-2]             ; wait for centre of next pulse :  1 + (mp+1)/cy    2 + mp/cy
+    jmp pin sync111x       ; If symbol 111 -> go sync111x  :  2 + mp/cy (*)    2 + (mp+1)/cy (maximum delayed latch point)
+    in null, 1             ; else emit 0 (symbol 110)      :  2 + (mp+1)/cy    2 + (mp+2)/cy
+    jmp symbol_0x [cy-3]   ; go symbol_0x                  :  2 + (mp+2)/cy    3 + mp/cy (= 1 + mp/cy)
 
 wait0:
-    wait 0 pin 0 [cy-1+lp] ; wait for 1 -> 0               :  0                1 + lp/cy
+    wait 0 pin 0 [cy-1+mp] ; wait for 1 -> 0               :  0                1 + mp/cy
 symbol_0x:
-    jmp pin symbol_01      ; If symbol 01 -> go symbol_01  :  1 + lp/cy (*)    1 + (lp+1)/cy
-    in null, 1             ; else emit 0 (symbol 00)       :  1 + (lp+1)/cy    1 + (lp+2)/cy
+    jmp pin symbol_01      ; If symbol 01 -> go symbol_01  :  1 + mp/cy (*)    1 + (mp+1)/cy
+    in null, 1             ; else emit 0 (symbol 00)       :  1 + (mp+1)/cy    1 + (mp+2)/cy
 .wrap
 symbol_01:
-    in x, 1                ; emit 1                        :  1 + (lp+1)/cy    1 + (lp+2)/cy
-    jmp wait0              ; go wait0                      :  1 + (lp+2)/cy    1 + (lp+3)/cy
+    in x, 1                ; emit 1                        :  1 + (mp+1)/cy    1 + (mp+2)/cy
+    jmp wait0              ; go wait0                      :  1 + (mp+2)/cy    1 + (mp+3)/cy
 
 sync111x:
     push noblock           ; load 32bit value from ISR to FIFO - don't block but set flag on overrun
-    in x, 2                ; emit sync (sync 1110)         :  2 + (lp+1)/cy    2 + (lp+2)/cy
-    wait 0 pin 0 [cy-1+lp] ; wait for 1 -> 0               :  3                4 + lp/cy
-    jmp pin sync1xxx [cy-2]; If sync 1xxx -> go sync1xxx   :  4 + lp/cy (*)    5 + (lp-1)/cy
-    jmp symbol_0x          ; else go symbol_0x (sync 0xxx) :  5 + (lp-1)/cy    5 + lp/cy (= 1 + lp/cy)
+    in x, 2                ; emit sync (sync 1110)         :  2 + (mp+1)/cy    2 + (mp+2)/cy
+    wait 0 pin 0 [cy-1+mp] ; wait for 1 -> 0               :  3                4 + mp/cy
+    jmp pin sync1xxx [cy-2]; If sync 1xxx -> go sync1xxx   :  4 + mp/cy (*)    5 + (mp-1)/cy
+    jmp symbol_0x          ; else go symbol_0x (sync 0xxx) :  5 + (mp-1)/cy    5 + mp/cy (= 1 + mp/cy)
 
 sync1xxx:                  ; sync1xxx must be sync1000
-    in x, 2                ; emit sync (sync 1000)         :  2 + (lp-1)/cy    2 + lp/cy
-    jmp entry_point        ;                               :  2 + lp/cy        2 + (lp+1)/cy
+    in x, 2                ; emit sync (sync 1000)         :  2 + (mp-1)/cy    2 + mp/cy
+    jmp entry_point        ;                               :  2 + mp/cy        2 + (mp+1)/cy
 
 
 ; Master Clock output
 ; Outputs I2S MCLK on specified pin
 ; Frequency is 256xfs - ideal would be 256 x 48MHz = 12.288MHz
 ; Actual frequency = 172MHz (sys clock) / 7 / 2 = 12.286MHz
+; only one MCLK clock generator for all 4 I2S state machines 
+; as they should all be in sync. with the (much faster) master clock
 
 .program mclk
 .wrap_target
@@ -77,6 +82,11 @@ sync1xxx:                  ; sync1xxx must be sync1000
 ; fs: 48kHz
 ; PIO Clock freq: 24.57MHz (172MHz / 7)
 ; Bit depth: 32bit
+; this same code is shared between all 4 state machines in the PIO
+;
+; The program generates 3 outputs on 3 separate pins (per state machine)
+; One pin is driven by the "out" instruction (the SD line), while the other
+; two signal lines (LRCK and BCLK) are driven by "side set" functions  
 ; 
 
 .program i2s
