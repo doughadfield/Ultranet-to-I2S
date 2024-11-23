@@ -129,6 +129,7 @@ target_include_directories(Ultranet PRIVATE
 # Add any user requested libraries
 target_link_libraries(Ultranet 
         hardware_pio
+        hardware_pwm
         hardware_clocks
         pico_multicore
         )

@@ -33,27 +33,66 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
+#include "hardware/pwm.h"
 #include "hardware/clocks.h"
 #include "pico/multicore.h"
 
 #include "ultranet.pio.h"
 
-// #define CLOCKSPEED  172000      // 172000 for 7 slots per bit incoming Ultranet stream
+                                // 172000 for 7 slots per bit incoming Ultranet stream
 #define CLOCKSPEED  196500      // 196500 for 8 slots per bit incoming Ultranet stream
 #define AUDIV 8                 // Audio divider for pio timing (7 for 172MHz, 8 for 196.5MHz)
 #define PICO_LED 25             // LED pin - to indicate ultranet framing error
 // Ultranet input and MCLK state machines use pio0
 #define ULTRANET_PIN 0          // ultranet input pin
 #define SM 0                    // state machine to use for Ultranet input
-#define MCLK_PIN 2              // I2S Master Clock Pin
+#define MCLK_PIN 1              // I2S Master Clock Pin
 #define SM_MCLK 1               // state machine for I2S master clock
 // I2S outputs use second pio (pio1), four I2S outputs, 3 pins each
-#define I2S1_PINS 3             // base for I2S output pins (3 pins starting point)
-#define I2S2_PINS 6             // base for I2S output pins (3 pins starting point)
-#define I2S3_PINS 9             // base for I2S output pins (3 pins starting point)
-#define I2S4_PINS 12            // base for I2S output pins (3 pins starting point)
+#define I2S1_PINS 2             // base for I2S output pins (3 pins starting point)
+#define I2S2_PINS 5             // base for I2S output pins (3 pins starting point)
+#define I2S3_PINS 8             // base for I2S output pins (3 pins starting point)
+#define I2S4_PINS 11            // base for I2S output pins (3 pins starting point)
 
-volatile uint32_t samples[9];   // array of samples read from Ultranet stream
+// for PWM analog audio outputs
+#define PIN_PWM_1A 14           // A channel of PWM slice (left audio)
+#define PIN_PWM_1B 15           // B channel of PWM slice (right audio)
+#define PIN_PWM_2A 18           // A channel of PWM slice (left audio)
+#define PIN_PWM_2B 19           // B channel of PWM slice (right audio)
+#define PIN_PWM_3A 26           // A channel of PWM slice (left audio)
+#define PIN_PWM_3B 27           // B channel of PWM slice (right audio)
+#define PIN_PWM_4A 28           // A channel of PWM slice (left audio)
+#define PIN_PWM_4B 29           // B channel of PWM slice (right audio)
+
+#define pwm_set_a(slice,num) pwm_set_chan_level((slice), PWM_CHAN_A, (uint16_t)(num))
+#define pwm_set_b(slice,num) pwm_set_chan_level((slice), PWM_CHAN_B, (uint16_t)(num))
+
+volatile uint32_t samples[8];   // array of samples read from Ultranet stream
+volatile uint8_t slice[4];      // PWM slice numbers for specified pins
+
+void pwm_setup(void)
+{
+    uint count;                                     // loop counter
+    gpio_set_function(PIN_PWM_1A, GPIO_FUNC_PWM);   // set pin funtion to PWM output
+    gpio_set_function(PIN_PWM_1B, GPIO_FUNC_PWM);   // set pin funtion to PWM output
+    gpio_set_function(PIN_PWM_2A, GPIO_FUNC_PWM);   // set pin funtion to PWM output
+    gpio_set_function(PIN_PWM_2B, GPIO_FUNC_PWM);   // set pin funtion to PWM output
+    gpio_set_function(PIN_PWM_3A, GPIO_FUNC_PWM);   // set pin funtion to PWM output
+    gpio_set_function(PIN_PWM_3B, GPIO_FUNC_PWM);   // set pin funtion to PWM output
+    gpio_set_function(PIN_PWM_4A, GPIO_FUNC_PWM);   // set pin funtion to PWM output
+    gpio_set_function(PIN_PWM_4B, GPIO_FUNC_PWM);   // set pin funtion to PWM output
+    slice[0] = pwm_gpio_to_slice_num(PIN_PWM_1A);   // get PWM slice that uses this pin
+    slice[1] = pwm_gpio_to_slice_num(PIN_PWM_2A);   // get PWM slice that uses this pin
+    slice[2] = pwm_gpio_to_slice_num(PIN_PWM_3A);   // get PWM slice that uses this pin
+    slice[3] = pwm_gpio_to_slice_num(PIN_PWM_4A);   // get PWM slice that uses this pin
+    for(count=0;count<4;count++)
+    {
+        pwm_set_wrap(slice[count], 0xFFF);          // set PWM period to 4096
+        pwm_set_a(slice[count], 0x1000/2);          // start output at 50%
+        pwm_set_b(slice[count], 0x1000/2);          // start output at 50%
+        pwm_set_enabled(slice[count], true);        // start PWM running
+    }
+}
 
 // state machine init functions (used to be defined in <prog>.pio file)
 
@@ -98,6 +137,7 @@ void i2s_pio_init(PIO pio, uint sm, uint pin, uint offset)
 void core1_entry(void)                                  // Core1 starts executiing here
 {
     uint i2s_offset;                                    // position for i2s code in pio (shared for all SMs)
+    volatile uint32_t ssample;                          // signed version of audio sample
 
     i2s_offset = pio_add_program(pio1, &i2s_program);   // load i2c output code once for all state machines
     i2s_pio_init(pio1, 0, I2S1_PINS, i2s_offset);       // all 4 state machines use the same code
@@ -119,14 +159,46 @@ void core1_entry(void)                                  // Core1 starts executii
 
     while(true)                                         // output samples synchronised with I2S streams
     {
+        // continually load pio FIFOs for I2S outputs, and PWM registers for PWM outputs
         pio_sm_put_blocking(pio1, 0, samples[0]);       // subframe 1 goes to I2S0 channel 1
+
+        ssample = (0x80000000 + (signed)samples[0]);
+        pwm_set_a(slice[0], (ssample>>20));             // PWM value is high 12 bits of audio
+
         pio_sm_put_blocking(pio1, 1, samples[2]);       // subframe 3 goes to I2S1 channel 1
+
+        ssample = (0x80000000 + (signed)samples[2]);
+        pwm_set_a(slice[1], (ssample>>20));             // PWM value is high 12 bits of audio
+
         pio_sm_put_blocking(pio1, 2, samples[4]);       // subframe 5 goes to I2S2 channel 1
+
+        ssample = (0x80000000 + (signed)samples[4]);
+        pwm_set_a(slice[2], (ssample>>20));             // PWM value is high 12 bits of audio
+
         pio_sm_put_blocking(pio1, 3, samples[6]);       // subframe 7 goes to I2S3 channel 1
+
+        ssample = (0x80000000 + (signed)samples[6]);
+        pwm_set_a(slice[3], (ssample>>20));             // PWM value is high 12 bits of audio
+
         pio_sm_put_blocking(pio1, 0, samples[1]);       // subframe 2 goes to I2S0 channel 2
+
+        ssample = (0x80000000 + (signed)samples[1]);
+        pwm_set_b(slice[0], (ssample>>20));             // PWM value is high 12 bits of audio
+
         pio_sm_put_blocking(pio1, 1, samples[3]);       // subframe 4 goes to I2S1 channel 2
+
+        ssample = (0x80000000 + (signed)samples[3]);
+        pwm_set_b(slice[1], (ssample>>20));             // PWM value is high 12 bits of audio
+
         pio_sm_put_blocking(pio1, 2, samples[5]);       // subframe 6 goes to I2S2 channel 2
+
+        ssample = (0x80000000 + (signed)samples[5]);
+        pwm_set_b(slice[2], (ssample>>20));             // PWM value is high 12 bits of audio
+
         pio_sm_put_blocking(pio1, 3, samples[7]);       // subframe 8 goes to I2S3 channel 2
+
+        ssample = (0x80000000 + (signed)samples[7]);
+        pwm_set_b(slice[3], (ssample>>20));             // PWM value is high 12 bits of audio
     }
 }
 
@@ -139,6 +211,7 @@ int main()
 
     sleep_ms(200);                  // allow time for clocks etc. to settle
 
+    pwm_setup();                                        // initialise PWM hardware and start outputs
 
     mclk_pio_init(pio0, SM_MCLK, MCLK_PIN);             // uncomment to enable I2S MCLK
 
