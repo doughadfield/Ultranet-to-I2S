@@ -18,8 +18,9 @@
 
 .program ultranet
 
-.define cy 7                ; cycle delay: 24.576 * 7 = 172.032MHz - run cpu clock at 172MHz
-.define mp 3                ; sample mid-point of incoming pulses (half cycle delay)
+.define cy 8                ; cycle delay: 24.576 * 8 = 196.608MHz - run cpu clock at 196.5MHz
+; .define cy 7                ; cycle delay: 24.576 * 7 = 172.032MHz - run cpu clock at 172MHz
+.define mp 4                ; sample mid-point of incoming pulses (half cycle delay)
 
 ; X register is used as a source of "1"s for shifting into ISR
 ;    (only LSB 2 bits are used to generate 0b1 or 0b11 to emit into input data word)

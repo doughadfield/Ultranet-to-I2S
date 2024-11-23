@@ -8,7 +8,12 @@
 * We need pio module to sample at 7 x incoming clock rate
 * Ideal system clock therefore = 7 x 24.576 = 172.032MHz
 * We set cpu clock frequency as close to 172032KHz as possible
-* but can only set whole numbers of MHz, so 172000khz
+* but can only set certain numbers of MHz, so 172000khz
+*
+* OR we need pio module to sample at 8 x incoming clock rate
+* Ideal system clock therefore = 8 x 24.576 = 196.608MHz
+* We set cpu clock frequency as close to 196608KHz as possible
+* but can only set certain numbers of MHz, so 176500khz
 *
 * Ultranet audio sample depth is in fact 22 bits, not 24
 * So we mask the 2 LSBs when reading words from Ultranet stream
@@ -33,7 +38,9 @@
 
 #include "ultranet.pio.h"
 
-#define CLOCKSPEED  172000      // 172000 for 7 slots per bit incoming Ultranet stream
+// #define CLOCKSPEED  172000      // 172000 for 7 slots per bit incoming Ultranet stream
+#define CLOCKSPEED  196500      // 196500 for 8 slots per bit incoming Ultranet stream
+#define AUDIV 8                 // Audio divider for pio timing (7 for 172MHz, 8 for 196.5MHz)
 #define PICO_LED 25             // LED pin - to indicate ultranet framing error
 // Ultranet input and MCLK state machines use pio0
 #define ULTRANET_PIN 0          // ultranet input pin
@@ -67,7 +74,7 @@ void mclk_pio_init(PIO pio, uint sm, uint pin)
     pio_sm_config c = mclk_program_get_default_config(offset);  // get default structure
     pio_gpio_init(pio, pin);
     pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, true);
-    sm_config_set_clkdiv_int_frac(&c, 7, 0);
+    sm_config_set_clkdiv_int_frac(&c, AUDIV, 0);
     sm_config_set_set_pins (&c, pin, 1);                // output pin range base and count
     pio_sm_init(pio, sm, offset, &c);                   // apply structure to state machine
     pio_sm_set_enabled(pio, sm, true);                  // start state machine running
@@ -80,7 +87,7 @@ void i2s_pio_init(PIO pio, uint sm, uint pin, uint offset)
     pio_gpio_init(pio, pin+1);
     pio_gpio_init(pio, pin+2);
     pio_sm_set_consecutive_pindirs(pio, sm, pin, 3, true);  // set base+3 pins to output
-    sm_config_set_clkdiv_int_frac(&c, 7, 0);            // set frequency of SM to fs x 256
+    sm_config_set_clkdiv_int_frac(&c, AUDIV, 0);            // set frequency of SM to fs x 256
     sm_config_set_out_pins (&c, pin, 3);                // out pin range base and count
     sm_config_set_sideset_pins (&c, pin+1);             // sideset pin range base
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);      // configure 8 depth output fifo
