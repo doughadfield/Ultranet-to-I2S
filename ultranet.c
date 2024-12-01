@@ -39,19 +39,26 @@
 
 #include "ultranet.pio.h"
 
-#define DEBUG                   // enable debug code
+// conditional compilation switches for hardware options
+// #define DEBUG                   // enable debug code
+#define WS2812                  // Our board has a ws2812 programmable LED
+#define MCLK                    // Enable MCLK clock for I2S devices
 
                                 // 172000 for 7 slots per bit incoming Ultranet stream
 #define CLOCKSPEED  196500      // 196500 for 8 slots per bit incoming Ultranet stream
 #define AUDIV 8                 // Audio divider for pio timing (7 for 172MHz, 8 for 196.5MHz)
+#ifndef WS2812                  // Use normal LED on "genuine" PICO boards
 #define PICO_LED 25             // LED pin - to indicate ultranet framing error
+#endif // WS2812
 // Ultranet input and MCLK state machines use pio0
 #define UNET_PIN 0              // ultranet input pin
 #define UNET_PIO pio0           // PIO module to use for Ultranet input
 #define UNET_SM 0               // state machine to use for Ultranet input
+#ifdef MCLK                     // if we want an I2S MCLK clock
 #define MCLK_PIN 1              // I2S Master Clock Pin
 #define MCLK_PIO pio0           // state machine for I2S master clock
 #define MCLK_SM 1               // state machine for I2S master clock
+#endif // MCLK
 // I2S outputs use second pio (pio1), four I2S outputs, 3 pins each
 #define I2S_PIO pio1            // PIO 1 is dedicated to I2S outputs (all 4 SMs)
 #define I2S1_PINS 2             // base for I2S output pins (3 pins starting point)
@@ -59,17 +66,19 @@
 #define I2S3_PINS 8             // base for I2S output pins (3 pins starting point)
 #define I2S4_PINS 11            // base for I2S output pins (3 pins starting point)
 // ws2812 multicolour LED driving
+#ifdef WS2812
 #define WS2812_PIN 16           // chinese pico boards have ws2812 on pin 16
 #define WS2812_PIO pio0         // same pio as ultranet & mclk
 #define WS2812_SM 2             // state machine for LED output
-#define GREEN 0x07000000        // send this to ws2812 for GREEN LED
-#define RED   0x00070000        // send this to ws2812 for RED LED
-#define BLUE  0x00000F00        // send this to ws2812 for BLUE LED
-#define WHITE (RED|GREEN|BLUE)  // send this to ws2812 for WHITE LED
-#define CYAN (RED|BLUE)
-#define MAGENTA (GREEN|BLUE)
+#define GREEN 0x0F000000        // send this to ws2812 for GREEN LED
+#define RED   0x00180000        // send this to ws2812 for RED LED
+#define BLUE  0x00001F00        // send this to ws2812 for BLUE LED
+#define WHITE 0x0F0F0F00        // send this to ws2812 for WHITE LED
+#define CYAN (RED|BLUE)         // above primary colour intensities are tuned for
+#define MAGENTA (GREEN|BLUE)    // best colour mix and even-ness
 #define YELLOW (GREEN|RED)
 #define put_pixel(pixel) pio_sm_put(WS2812_PIO, WS2812_SM, (pixel))
+#endif // WS2812
 
 // for PWM analog audio outputs
 #define PIN_PWM_1A 14           // A channel of PWM slice (left audio)
@@ -126,6 +135,7 @@ void ultranet_pio_init(PIO pio, uint sm, uint pin)
     pio_sm_set_enabled(pio, sm, true);                      // start state machine running
 }
 
+#ifdef MCLK
 void mclk_pio_init(PIO pio, uint sm, uint pin)
 {
     uint offset = pio_add_program(pio, &mclk_program);      // load clock code
@@ -137,6 +147,7 @@ void mclk_pio_init(PIO pio, uint sm, uint pin)
     pio_sm_init(pio, sm, offset, &c);                       // apply structure to state machine
     pio_sm_set_enabled(pio, sm, true);                      // start state machine running
 }
+#endif // MCLK
 
 void i2s_pio_init(PIO pio, uint sm, uint pin, uint offset)
 {
@@ -153,6 +164,7 @@ void i2s_pio_init(PIO pio, uint sm, uint pin, uint offset)
     pio_sm_init(pio, sm, offset, &c);                       // apply structure to state machine
 }
 
+#ifdef WS2812
 void ws2812_pio_init(PIO pio, uint sm, uint pin)            // Set up PIO SM for ws2812 LED module
 {
     uint offset = pio_add_program(pio, &ws2812_program);    // PIO program shares code space with UNET and MCLK
@@ -164,13 +176,14 @@ void ws2812_pio_init(PIO pio, uint sm, uint pin)            // Set up PIO SM for
     sm_config_set_out_shift(&c, false, true, 24);           // set shift direction RIGHT, no autopull
     sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_TX);          // use 8 deep TX FIFO
 
-    int cycles_per_bit = ws2812_T1 + ws2812_T2 + ws2812_T3;
-    float div = clock_get_hz(clk_sys) / (800000 * cycles_per_bit);  // ws2812 needs precise 800KHz timing
+#define CYCLES_PER_BIT ((ws2812_T1)+(ws2812_T2)+(ws2812_T3)) // constants defined in .pio source file
+    float div = clock_get_hz(clk_sys) / (800000 * CYCLES_PER_BIT);  // ws2812 needs precise 800KHz timing
     sm_config_set_clkdiv(&c, div);
 
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, true);                      // Set ws2812 PIO state machine running
 }
+#endif // WS2812
 
 /*
 * Core 1 continuously reads the samples array and outputs the values to the I2S and PWM streams
@@ -261,14 +274,20 @@ int main()
 
     pwm_setup();                                            // initialise PWM hardware and start outputs
 
+#ifdef MCLK
     mclk_pio_init(MCLK_PIO, MCLK_SM, MCLK_PIN);             // uncomment to enable I2S MCLK
+#endif // MCLK
 
     ultranet_pio_init(UNET_PIO, UNET_SM, UNET_PIN);         // initialise and start ultranet state machine
 
+#ifdef WS2812
     ws2812_pio_init(WS2812_PIO, WS2812_SM, WS2812_PIN);     // ws2812 output pio state machine
+#endif // WS2812
 
+#ifdef PICO_LED
     gpio_init(PICO_LED);                                    // set LED pin as GPIO 
     gpio_set_dir(PICO_LED, GPIO_OUT);                       // set LED pin as output
+#endif // PICO_LED
 
     multicore_launch_core1(core1_entry);                    // start core 1
 
@@ -276,6 +295,50 @@ int main()
 #ifdef DEBUG
     sleep_ms(5000);
     puts("FINISHED setting everything up\n");
+#ifdef WS2812
+    while(true)
+    {
+        int inc = getchar();
+        switch(inc)
+        {
+            case 'r':
+            case 'R':
+                pio_sm_put(WS2812_PIO, WS2812_SM, RED);
+                puts("RED");
+                break;
+            case 'g':
+            case 'G':
+                pio_sm_put(WS2812_PIO, WS2812_SM, GREEN);
+                puts("GREEN");
+                break;
+            case 'b':
+            case 'B':
+                pio_sm_put(WS2812_PIO, WS2812_SM, BLUE);
+                puts("BLUE");
+                break;
+            case 'm':
+            case 'M':
+                pio_sm_put(WS2812_PIO, WS2812_SM, MAGENTA);
+                puts("MAGENTA");
+                break;
+            case 'c':
+            case 'C':
+                pio_sm_put(WS2812_PIO, WS2812_SM, CYAN);
+                puts("CYAN");
+                break;
+            case 'y':
+            case 'Y':
+                pio_sm_put(WS2812_PIO, WS2812_SM, YELLOW);
+                puts("YELLOW");
+                break;
+            case 'w':
+            case 'W':
+                pio_sm_put(WS2812_PIO, WS2812_SM, WHITE);
+                puts("WHITE");
+                break;
+        }
+#endif // WS2812
+    }
 #endif // DEBUG
 
     // sync with ultranet frames initially, so we don't turn LED on at start 
@@ -317,12 +380,17 @@ int main()
         }
         else    // if we get here, we looked for start frame in the right place, but didn't find it
         {
+#ifdef PIO_LED
             if(gpio_get(PICO_LED) == 0)
                 gpio_put(PICO_LED, 1);                      // turn on LED to indicate frame error
             else
                 gpio_put(PICO_LED, 0);
+#endif // PIO_LED
+#ifdef WS2812
+            pio_sm_put(WS2812_PIO, WS2812_SM, RED);         // indicate framing error
+#endif // PIO_LED
 #ifdef DEBUG
-                puts("TURN ON LED");
+            puts("TURN ON LED");
 #endif // DEBUG
         }
         sample = pio_sm_get_blocking(UNET_PIO,UNET_SM);     // get next sample from Ultranet FIFO

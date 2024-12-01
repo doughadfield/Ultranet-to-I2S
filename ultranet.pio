@@ -116,9 +116,13 @@ loopR:
 .program ws2812
 .side_set 1
 
-; The following constants are selected for broad compatibility with WS2812,
-; WS2812B, and SK6812 LEDs. Other constants may support higher bandwidths for
-; specific LEDs, such as (7,10,8) for WS2812B LEDs.
+; Output driver for WS2812 type multi-colour daisy-chained LEDs.
+; The minature Chinese RP2040 pico boards have one such LED, on pin 16,
+; which we use for status indications. 
+; The following constants work for most WS2812, WS2812B, and SK6812 LEDs,
+; which use an 800KHz clock. To calculate state machine clock divider:
+; SM cycles per output bit = T1 + T2 + T3
+; SM clock = (800000 * <cycles per output bit>)
 
 .define public T1 3
 .define public T2 3
