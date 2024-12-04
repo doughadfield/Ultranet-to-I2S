@@ -67,10 +67,6 @@
 #define PIN_PWM_4A 28           // A channel of PWM slice (left audio)
 #define PIN_PWM_4B 29           // B channel of PWM slice (right audio)
 
-#define pwm_set_a(slice,num) pwm_set_chan_level((slice), PWM_CHAN_A, (uint16_t)(num))
-#define pwm_set_b(slice,num) pwm_set_chan_level((slice), PWM_CHAN_B, (uint16_t)(num))
+extern volatile uint32_t samples[8];   // array of samples read from Ultranet stream
 
-volatile uint32_t samples[8];   // array of samples read from Ultranet stream
-volatile uint8_t slice[4];      // PWM slice numbers for specified pins
-
-extern void core1_entry(void);
+extern void core1_entry(void);  // main process for core 1, defined in "core1.c"

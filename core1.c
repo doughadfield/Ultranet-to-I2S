@@ -12,6 +12,8 @@
 
 #include "ultranet.h"
 
+volatile uint8_t slice[4];      // PWM slice numbers for specified pins
+
 #ifdef MCLK
 void mclk_pio_init(PIO pio, uint sm, uint pin)
 {
@@ -41,6 +43,8 @@ void i2s_pio_init(PIO pio, uint sm, uint pin, uint offset)
     pio_sm_init(pio, sm, offset, &c);                       // apply structure to state machine
 }
 
+#define pwm_set_a(slice,num) pwm_set_chan_level((slice), PWM_CHAN_A, (uint16_t)(num))
+#define pwm_set_b(slice,num) pwm_set_chan_level((slice), PWM_CHAN_B, (uint16_t)(num))
 
 void pwm_setup(void)
 {

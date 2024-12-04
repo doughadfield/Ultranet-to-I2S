@@ -38,7 +38,7 @@
         {
             "label": "Flash",
             "type": "process",
-            "command": "openocd",
+            "command": "${userHome}/.pico-sdk/openocd/0.12.0+dev/openocd.exe",
             "args": [
                 "-s",
                 "${userHome}/.pico-sdk/openocd/0.12.0+dev/scripts",
@@ -51,7 +51,7 @@
             ],
             "problemMatcher": [],
             "windows": {
-                "command": "openocd",
+                "command": "${env:USERPROFILE}/.pico-sdk/openocd/0.12.0+dev/openocd.exe",
             }
         }
     ]
