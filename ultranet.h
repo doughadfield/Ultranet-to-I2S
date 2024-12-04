@@ -54,6 +54,7 @@
 #define CYAN (RED|BLUE)         // above primary colour intensities are tuned for
 #define MAGENTA (GREEN|BLUE)    // best colour mix and even-ness
 #define YELLOW (GREEN|RED)
+#define BLACK 0                 // turn off all LEDs in module
 #define put_pixel(pixel) pio_sm_put(WS2812_PIO, WS2812_SM, (pixel))
 #endif // WS2812
 
