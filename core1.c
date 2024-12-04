@@ -12,7 +12,7 @@
 
 #include "ultranet.h"
 
-volatile uint8_t slice[4];      // PWM slice numbers for specified pins
+volatile uint8_t slice[4];                                  // PWM slice numbers for specified pins
 
 #ifdef MCLK
 void mclk_pio_init(PIO pio, uint sm, uint pin)
@@ -81,7 +81,6 @@ void core1_entry(void)                                      // Core1 starts exec
 #ifdef MCLK
     mclk_pio_init(MCLK_PIO, MCLK_SM, MCLK_PIN);             // uncomment to enable I2S MCLK
 #endif // MCLK
-
 
     i2s_offset = pio_add_program(I2S_PIO, &i2s_program);    // load i2c output code once for all state machines
     i2s_pio_init(I2S_PIO, 0, I2S1_PINS, i2s_offset);        // all 4 state machines use the same code

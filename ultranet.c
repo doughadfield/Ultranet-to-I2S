@@ -73,11 +73,9 @@ void ws2812_pio_init(PIO pio, uint sm, uint pin)            // Set up PIO SM for
 }
 #endif // WS2812
 
-int main()
-{
-    volatile uint32_t sample;                               // temp store for sample read from Ultranet stream
-
 // Embedded binary information (for picotool interrogation of programmed device)
+void set_binary_info(void)
+{
     bi_decl(bi_program_description("Single Ultranet stream input, 4xI2S, 8xPWM")); // Description field for embedded identification 
     bi_decl(bi_program_version_string("1.0"));              // first version (single channel, 4xI2S + 8xPWM)
     bi_decl(bi_1pin_with_name(UNET_PIN, "Ultranet Stream Input"));
@@ -88,7 +86,13 @@ int main()
     bi_decl(bi_pin_mask_with_name((1<<I2S4_PINS|(1<<I2S4_PINS+1)|(1<<I2S4_PINS+2)), "I2S_4"));
     bi_decl(bi_4pins_with_names(PIN_PWM_1A, "PWM_1 Left", PIN_PWM_1B, "PWM_1 Right", PIN_PWM_2A, "PWM_2 Left", PIN_PWM_2B, "PWM_2 Right"));
     bi_decl(bi_4pins_with_names(PIN_PWM_3A, "PWM_3 Left", PIN_PWM_3B, "PWM_3 Right", PIN_PWM_4A, "PWM_4 Left", PIN_PWM_4B, "PWM_4 Right"));
+}
 
+int main()
+{
+    volatile uint32_t sample;                               // temp store for sample read from Ultranet stream
+
+    set_binary_info();                                      // info for querying by picotool
     stdio_init_all();                                       // initialise SDK libraries and interfaces
     set_sys_clock_khz(CLOCKSPEED,false);                    // set cpu clock frequency
 
@@ -196,12 +200,12 @@ int main()
         }
         else    // if we get here, we looked for start frame in the right place, but didn't find it
         {
-#ifdef PIO_LED
+#ifdef PICO_LED
             if(gpio_get(PICO_LED) == 0)
                 gpio_put(PICO_LED, 1);                      // turn on LED to indicate frame error
             else
                 gpio_put(PICO_LED, 0);
-#endif // PIO_LED
+#endif // PICO_LED
 #ifdef WS2812
             pio_sm_put(WS2812_PIO, WS2812_SM, RED);         // indicate framing error
 #endif // PIO_LED
