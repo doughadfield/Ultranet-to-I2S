@@ -13,7 +13,7 @@
 * OR we need pio module to sample at 8 x incoming clock rate
 * Ideal system clock therefore = 8 x 24.576 = 196.608MHz
 * We set cpu clock frequency as close to 196608KHz as possible
-* but can only set certain numbers of MHz, so 176500khz
+* but can only set certain numbers of MHz, so 196500khz
 *
 * Ultranet audio sample depth is in fact 22 bits, not 24
 * So we mask the 2 LSBs when reading words from Ultranet stream
@@ -78,8 +78,14 @@ void set_binary_info(void)
 {
     bi_decl(bi_program_description("Single Ultranet stream input, 4xI2S, 8xPWM")); // Description field for embedded identification 
     bi_decl(bi_program_version_string("1.0"));              // first version (single channel, 4xI2S + 8xPWM)
+#ifdef UNETH_PIN
+    bi_decl(bi_2pins_with_names(UNETL_PIN, "Ultranet Low (1-8) Stream Input", UNETH_PIN, "Ultranet High (9-16) Input"));
+#else
     bi_decl(bi_1pin_with_name(UNET_PIN, "Ultranet Stream Input"));
+#endif // UNETH_PIN
+#ifdef MCLK
     bi_decl(bi_1pin_with_name(MCLK_PIN, "I2S MCLK Output"));
+#endif // MCLK
     bi_decl(bi_pin_mask_with_name((1<<I2S1_PINS|(1<<I2S1_PINS+1)|(1<<I2S1_PINS+2)), "I2S_1 DATA,BCLK,LRCLK"));
     bi_decl(bi_pin_mask_with_name((1<<I2S2_PINS|(1<<I2S2_PINS+1)|(1<<I2S2_PINS+2)), "I2S_2"));
     bi_decl(bi_pin_mask_with_name((1<<I2S3_PINS|(1<<I2S3_PINS+1)|(1<<I2S3_PINS+2)), "I2S_3"));

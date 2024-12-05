@@ -82,12 +82,14 @@ sync1xxx:                  ; sync1xxx must be sync1000
 ; I2S send Master
 ; fs: 48kHz
 ; PIO Clock freq: 24.57MHz (172MHz / 7)
+; Or PIO Clock freq: 24.56MHz (196.5MHz / 8)
 ; Bit depth: 32bit
 ; this same code is shared between all 4 state machines in the PIO
 ;
 ; The program generates 3 outputs on 3 separate pins (per state machine)
 ; One pin is driven by the "out" instruction (the SD line), while the other
 ; two signal lines (LRCK and BCLK) are driven by "side set" functions  
+; Out pin = SD, side pin base = BCLK, pin base +1 = LRCLK
 ; 
 
 .program i2s

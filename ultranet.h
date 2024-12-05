@@ -28,13 +28,19 @@
 #define PICO_LED 25             // LED pin - to indicate ultranet framing error
 #endif // WS2812
 // Ultranet input and MCLK state machines use pio0
-#define UNET_PIN 0              // ultranet input pin
+#define UNETL_PIN 0             // ultranet low stream (1-8) input pin
+// #define UNETH_PIN 1             // ultranet high stream (9-16) input pin
+#define UNET_PIN UNETL_PIN      // ultranet default input pin
 #define UNET_PIO pio0           // PIO module to use for Ultranet input
 #define UNET_SM 0               // state machine to use for Ultranet input
 #ifdef MCLK                     // if we want an I2S MCLK clock
-#define MCLK_PIN 1              // I2S Master Clock Pin
-#define MCLK_PIO pio0           // state machine for I2S master clock
-#define MCLK_SM 1               // state machine for I2S master clock
+    #ifdef UNETH_PIN            // MCLK pin alternate to UNETH input on pin 1
+    #define MCLK_PIN 24         // I2S Master Clock Pin
+    #else
+    #define MCLK_PIN 1          // I2S Master Clock Pin 
+    #endif // UNETH_PIN
+    #define MCLK_PIO pio0       // state machine for I2S master clock
+    #define MCLK_SM 1           // state machine for I2S master clock
 #endif // MCLK
 // I2S outputs use second pio (pio1), four I2S outputs, 3 pins each
 #define I2S_PIO pio1            // PIO 1 is dedicated to I2S outputs (all 4 SMs)
