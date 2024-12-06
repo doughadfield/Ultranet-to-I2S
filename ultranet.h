@@ -14,7 +14,7 @@
 #include "pico/multicore.h"
 #include "pico/binary_info.h"
 
-#include "ultranet.pio.h"
+#include "build/ultranet.pio.h"
 
 // conditional compilation switches for hardware options
 // #define DEBUG                   // enable debug code
@@ -24,9 +24,6 @@
                                 // 172000 for 7 slots per bit incoming Ultranet stream
 #define CLOCKSPEED  196500      // 196500 for 8 slots per bit incoming Ultranet stream
 #define AUDIV 8                 // Audio divider for pio timing (7 for 172MHz, 8 for 196.5MHz)
-#ifndef WS2812                  // Use normal LED on "genuine" PICO boards
-#define PICO_LED 25             // LED pin - to indicate ultranet framing error
-#endif // WS2812
 // Ultranet input and MCLK state machines use pio0
 #define UNETL_PIN 0             // ultranet low stream (1-8) input pin
 // #define UNETH_PIN 1             // ultranet high stream (9-16) input pin
@@ -61,9 +58,13 @@
 #define MAGENTA (GREEN|BLUE)    // best colour mix and even-ness
 #define YELLOW (GREEN|RED)
 #define BLACK 0                 // turn off all LEDs in module
+#define LED_STREAM_COLOUR BLUE  // set colour for LED stream indication
+#define LED_STREAM_MASK 0x0000FF00  // Mask blue bits, for stream detect LED
 #define put_pixel(pixel) pio_sm_put(WS2812_PIO, WS2812_SM, (pixel))
+#else // WS2812                 // Use normal LED on "genuine" PICO boards
+#define PICO_LED 25             // LED pin to indicate ultranet stream detected
 #endif // WS2812
-
+#define STREAM_LED_RESET 200000 // Period in us to reset stream indicator LED
 // for PWM analog audio outputs
 #define PIN_PWM_1A 14           // A channel of PWM slice (left audio)
 #define PIN_PWM_1B 15           // B channel of PWM slice (right audio)
@@ -74,6 +75,8 @@
 #define PIN_PWM_4A 28           // A channel of PWM slice (left audio)
 #define PIN_PWM_4B 29           // B channel of PWM slice (right audio)
 
-extern volatile uint32_t samples[8];   // array of samples read from Ultranet stream
+// these need to be "volatile" otherwise the compiler optimises them out!
+extern volatile uint32_t samples[8];    // array of samples read from Ultranet stream
+extern volatile uint32_t led_state;     // current value last sent to WS2812 LED
 
 extern void core1_entry(void);  // main process for core 1, defined in "core1.c"

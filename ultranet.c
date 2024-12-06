@@ -52,6 +52,7 @@ void ultranet_pio_init(PIO pio, uint sm, uint pin)
 
 
 #ifdef WS2812
+volatile uint32_t led_state;                                // current value last sent to WS2812 LED
 void ws2812_pio_init(PIO pio, uint sm, uint pin)            // Set up PIO SM for ws2812 LED module
 {
     uint offset = pio_add_program(pio, &ws2812_program);    // PIO program shares code space with UNET and MCLK
@@ -69,9 +70,28 @@ void ws2812_pio_init(PIO pio, uint sm, uint pin)            // Set up PIO SM for
 
     pio_sm_init(pio, sm, offset, &c);
     pio_sm_set_enabled(pio, sm, true);                      // Set ws2812 PIO state machine running
-    pio_sm_put(pio, sm, BLACK);                             // Clear LED to off
+    led_state = BLACK;                                      // initialise WS2812 LED to all off
+    pio_sm_put(pio, sm, led_state);                         // Clear all LED colours to off
 }
 #endif // WS2812
+
+// Timer callback for periodically turning off Ultranet detected LED
+// Outputs current state (as turned on by Ultranet stream code) then clears flag
+// If no Ultranet stream received, LED will turn off at next alarm tick
+int64_t alarm_callback(alarm_id_t id, __unused void *repeatptr)
+{
+#ifdef WS2812
+    pio_sm_put(WS2812_PIO, WS2812_SM, led_state);           // Output current sate of led_state flag to LED
+#endif // WS2812
+#ifdef PICO_LED
+    if((led_state & LED_STREAM_MASK) > 0)                   // led_state has been set by Ultranet stream code
+        gpio_put(PICO_LED, 1);                              // turn on LED when stream is detected
+    else
+        gpio_put(PICO_LED, 0);                              // or turn off if no stream detected
+#endif // PICO_LED
+    led_state = led_state & (!LED_STREAM_MASK);             // Zero out the stream LED colour bits
+    return *(const uint32_t*)repeatptr;                     // return value is repeat time
+}
 
 // Embedded binary information (for picotool interrogation of programmed device)
 void set_binary_info(void)
@@ -97,6 +117,7 @@ void set_binary_info(void)
 int main()
 {
     volatile uint32_t sample;                               // temp store for sample read from Ultranet stream
+    const uint64_t repeat_us = STREAM_LED_RESET;            // Repeat time period for alarm to clear Ultranet stream LED
 
     set_binary_info();                                      // info for querying by picotool
     stdio_init_all();                                       // initialise SDK libraries and interfaces
@@ -114,6 +135,8 @@ int main()
     gpio_init(PICO_LED);                                    // set LED pin as GPIO 
     gpio_set_dir(PICO_LED, GPIO_OUT);                       // set LED pin as output
 #endif // PICO_LED
+
+    add_alarm_in_us(repeat_us, alarm_callback, (void*)&repeat_us, false);  // start timer for stream LED blanking
 
     multicore_launch_core1(core1_entry);                    // start core 1
 
@@ -168,8 +191,10 @@ int main()
 #endif // DEBUG
 
     // sync with ultranet frames initially, so we don't turn LED on at start 
-    sample = pio_sm_get_blocking(UNET_PIO, UNET_SM);        // get initial sample from Ultranet FIFO
+    for(int count=0; count<200; count++)                    // discard the first 200 Ultranet frames after startup
+        sample = pio_sm_get_blocking(UNET_PIO, UNET_SM);    // get frame word from Ultranet FIFO
 
+    // now sync to start frame (starting with last sample read from FIFO)
     while((sample & 0x3F) != 0x0000000B && (sample & 0x3F) != 0x0000000F)
     {
         sample = pio_sm_get_blocking(UNET_PIO, UNET_SM);    // get next sample from Ultranet FIFO
@@ -203,21 +228,12 @@ int main()
 
             sample = pio_sm_get_blocking(UNET_PIO,UNET_SM); // get next sample from Ultranet FIFO
             samples[7] = (sample << 4) & 0xFFFFFC00;        // move 22 bits of audio into MSBs
+
+            led_state = led_state | LED_STREAM_COLOUR;      // set selected LED on, preserving other colours
         }
         else    // if we get here, we looked for start frame in the right place, but didn't find it
         {
-#ifdef PICO_LED
-            if(gpio_get(PICO_LED) == 0)
-                gpio_put(PICO_LED, 1);                      // turn on LED to indicate frame error
-            else
-                gpio_put(PICO_LED, 0);
-#endif // PICO_LED
-#ifdef WS2812
-            pio_sm_put(WS2812_PIO, WS2812_SM, RED);         // indicate framing error
-#endif // PIO_LED
-#ifdef DEBUG
-            puts("TURN ON LED");
-#endif // DEBUG
+            led_state = led_state | RED;                    // turn on RED, preserving other colours
         }
         sample = pio_sm_get_blocking(UNET_PIO,UNET_SM);     // get next sample from Ultranet FIFO
     }
