@@ -81,7 +81,7 @@ void ws2812_pio_init(PIO pio, uint sm, uint pin)            // Set up PIO SM for
 int64_t alarm_callback(alarm_id_t id, __unused void *repeatptr)
 {
 #ifdef WS2812
-    pio_sm_put(WS2812_PIO, WS2812_SM, led_state);           // Output current sate of led_state flag to LED
+    put_pixel(led_state);                                   // Output current sate of led_state flag to LED
 #endif // WS2812
 #ifdef PICO_LED
     if((led_state & LED_STREAM_MASK) > 0)                   // led_state has been set by Ultranet stream code
@@ -89,7 +89,7 @@ int64_t alarm_callback(alarm_id_t id, __unused void *repeatptr)
     else
         gpio_put(PICO_LED, 0);                              // or turn off if no stream detected
 #endif // PICO_LED
-    led_state = led_state & (!LED_STREAM_MASK);             // Zero out the stream LED colour bits
+    led_state = led_state & LED_STREAM_MASK;                // Zero out the stream LED colour bits
     return *(const uint32_t*)repeatptr;                     // return value is repeat time
 }
 
@@ -97,7 +97,7 @@ int64_t alarm_callback(alarm_id_t id, __unused void *repeatptr)
 void set_binary_info(void)
 {
     bi_decl(bi_program_description("Single Ultranet stream input, 4xI2S, 8xPWM")); // Description field for embedded identification 
-    bi_decl(bi_program_version_string("1.0"));              // first version (single channel, 4xI2S + 8xPWM)
+    bi_decl(bi_program_version_string("1.1"));              // first version (single channel, 4xI2S + 8xPWM)
 #ifdef UNETH_PIN
     bi_decl(bi_2pins_with_names(UNETL_PIN, "Ultranet Low (1-8) Stream Input", UNETH_PIN, "Ultranet High (9-16) Input"));
 #else
@@ -106,6 +106,12 @@ void set_binary_info(void)
 #ifdef MCLK
     bi_decl(bi_1pin_with_name(MCLK_PIN, "I2S MCLK Output"));
 #endif // MCLK
+#ifdef WS2812
+    bi_decl(bi_1pin_with_name(WS2812_PIN, "WS2832 multicolour LED"));
+#endif // WS2812
+#ifdef PICO_LED
+    bi_decl(bi_1pin_with_name(PICO_LED, "PICO board normal LED"));
+#endif // PICO_LED
     bi_decl(bi_pin_mask_with_name((1<<I2S1_PINS|(1<<I2S1_PINS+1)|(1<<I2S1_PINS+2)), "I2S_1 DATA,BCLK,LRCLK"));
     bi_decl(bi_pin_mask_with_name((1<<I2S2_PINS|(1<<I2S2_PINS+1)|(1<<I2S2_PINS+2)), "I2S_2"));
     bi_decl(bi_pin_mask_with_name((1<<I2S3_PINS|(1<<I2S3_PINS+1)|(1<<I2S3_PINS+2)), "I2S_3"));
@@ -233,7 +239,7 @@ int main()
         }
         else    // if we get here, we looked for start frame in the right place, but didn't find it
         {
-            led_state = led_state | RED;                    // turn on RED, preserving other colours
+            led_state = led_state | LED_ERR_COLOUR;         // turn on RED, preserving other colours
         }
         sample = pio_sm_get_blocking(UNET_PIO,UNET_SM);     // get next sample from Ultranet FIFO
     }
