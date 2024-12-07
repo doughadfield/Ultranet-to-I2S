@@ -3,8 +3,16 @@
 * Header file for the Ultranet project
 * contains all #includes and #defines for the 
 * project C files
+*
+* Ultranet provides 16 separate audio channels (or 8 stereo pairs) via two twisted pairs in a
+* CAT5/CAT6 cable. Each pair carries 8 channels, and is termed a "stream" in this project.
+* This module decodes a single Ultranet stream, but can select between both available streams.
+*
+* The module can be used either as an all-channels decoder (8 simultaneous channels) or as a
+* specific decoder for selected channels. An optional binary selector switch sets the offset for
+* the order of output channels onto board pins, such that a single output pair (I2S or PWM) can
+* be selected to be any of the 8 available stereo pairs from the two Ultranet input streams.
 */
-
 
 #include <stdio.h>
 #include "pico/stdlib.h"
@@ -14,7 +22,7 @@
 #include "pico/multicore.h"
 #include "pico/binary_info.h"
 
-#include "build/ultranet.pio.h"
+#include "build/ultranet.pio.h"     // derived automatically from the "ultranet.pio" source file
 
 // strings for inclusion in binary info (for query by picotool)
 #define DESCRIPTION "Single Ultranet stream input, 4xI2S, 8xPWM"
@@ -30,16 +38,12 @@
 #define AUDIV 8                     // Audio divider for pio timing (7 for 172MHz, 8 for 196.5MHz)
 // Ultranet input and MCLK state machines use pio0
 #define UNETL_PIN 0                 // ultranet low stream (1-8) input pin
-// #define UNETH_PIN 1              // ultranet high stream (9-16) input pin
+#define UNETH_PIN 1                 // ultranet high stream (9-16) input pin
 #define UNET_PIN UNETL_PIN          // ultranet default input pin
 #define UNET_PIO pio0               // PIO module to use for Ultranet input
 #define UNET_SM 0                   // state machine to use for Ultranet input
 #ifdef MCLK                         // if we want an I2S MCLK clock
-    #ifdef UNETH_PIN                // MCLK pin alternate to UNETH input on pin 1
-        #define MCLK_PIN 24         // I2S Master Clock Pin
-    #else
-        #define MCLK_PIN 1          // I2S Master Clock Pin 
-    #endif // UNETH_PIN
+    #define MCLK_PIN 24             // I2S Master Clock Pin (if used)
     #define MCLK_PIO pio0           // state machine for I2S master clock
     #define MCLK_SM 1               // state machine for I2S master clock
 #endif // MCLK
