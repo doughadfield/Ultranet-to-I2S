@@ -16,6 +16,10 @@
 
 #include "build/ultranet.pio.h"
 
+// strings for inclusion in binary info (for query by picotool)
+#define DESCRIPTION "Single Ultranet stream input, 4xI2S, 8xPWM"
+#define VERSION "1.1"
+
 // conditional compilation switches for hardware options
 // #define DEBUG                    // enable debug code
 #define WS2812                      // Our board has a ws2812 programmable LED
@@ -80,3 +84,4 @@ extern volatile uint32_t samples[8]; // array of samples read from Ultranet stre
 extern volatile uint32_t led_state; // current value last sent to WS2812 LED
 
 extern void core1_entry(void);      // main process for core 1, defined in "core1.c"
+extern void set_core1_info(void);   // set binary info for pins used by core1

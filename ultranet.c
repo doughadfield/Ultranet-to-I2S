@@ -96,8 +96,8 @@ int64_t alarm_callback(alarm_id_t id, __unused void *repeatptr)
 // Embedded binary information (for picotool interrogation of programmed device)
 void set_binary_info(void)
 {
-    bi_decl(bi_program_description("Single Ultranet stream input, 4xI2S, 8xPWM")); // Description field for embedded identification 
-    bi_decl(bi_program_version_string("1.1"));              // first version (single channel, 4xI2S + 8xPWM)
+    bi_decl(bi_program_description(DESCRIPTION));           // Description field for embedded identification 
+    bi_decl(bi_program_version_string(VERSION));            // Version field for embedded identification
 #ifdef UNETH_PIN
     bi_decl(bi_2pins_with_names(UNETL_PIN, "Ultranet Low (1-8) Stream Input", UNETH_PIN, "Ultranet High (9-16) Input"));
 #else
@@ -107,17 +107,12 @@ void set_binary_info(void)
     bi_decl(bi_1pin_with_name(MCLK_PIN, "I2S MCLK Output"));
 #endif // MCLK
 #ifdef WS2812
-    bi_decl(bi_1pin_with_name(WS2812_PIN, "WS2832 multicolour LED"));
+    bi_decl(bi_1pin_with_name(WS2812_PIN, "WS2812 NeoPixel LED"));
 #endif // WS2812
 #ifdef PICO_LED
     bi_decl(bi_1pin_with_name(PICO_LED, "PICO board normal LED"));
 #endif // PICO_LED
-    bi_decl(bi_pin_mask_with_name((1<<I2S1_PINS|(1<<I2S1_PINS+1)|(1<<I2S1_PINS+2)), "I2S_1 DATA,BCLK,LRCLK"));
-    bi_decl(bi_pin_mask_with_name((1<<I2S2_PINS|(1<<I2S2_PINS+1)|(1<<I2S2_PINS+2)), "I2S_2"));
-    bi_decl(bi_pin_mask_with_name((1<<I2S3_PINS|(1<<I2S3_PINS+1)|(1<<I2S3_PINS+2)), "I2S_3"));
-    bi_decl(bi_pin_mask_with_name((1<<I2S4_PINS|(1<<I2S4_PINS+1)|(1<<I2S4_PINS+2)), "I2S_4"));
-    bi_decl(bi_4pins_with_names(PIN_PWM_1A, "PWM_1 Left", PIN_PWM_1B, "PWM_1 Right", PIN_PWM_2A, "PWM_2 Left", PIN_PWM_2B, "PWM_2 Right"));
-    bi_decl(bi_4pins_with_names(PIN_PWM_3A, "PWM_3 Left", PIN_PWM_3B, "PWM_3 Right", PIN_PWM_4A, "PWM_4 Left", PIN_PWM_4B, "PWM_4 Right"));
+    set_core1_info();                                       // info for pins used by core1
 }
 
 int main()
