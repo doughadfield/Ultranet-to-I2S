@@ -25,8 +25,8 @@
 #include "build/ultranet.pio.h"     // derived automatically from the "ultranet.pio" source file
 
 // strings for inclusion in binary info (for query by picotool)
-#define DESCRIPTION "Single Ultranet stream input, 4xI2S, 8xPWM"
-#define VERSION "1.1"
+#define DESCRIPTION "Single Ultranet stream input (sw selected), 4xI2S stereo, 8xPWM mono"
+#define VERSION "1.2"
 
 // conditional compilation switches for hardware options
 // #define DEBUG                    // enable debug code
@@ -52,7 +52,11 @@
 #define I2S1_PINS 2                 // base for I2S output pins (3 pins starting point)
 #define I2S2_PINS 5                 // base for I2S output pins (3 pins starting point)
 #define I2S3_PINS 8                 // base for I2S output pins (3 pins starting point)
-#define I2S4_PINS 11                // base for I2S output pins (3 pins starting point)
+#define I2S4_PINS 17                // base for I2S output pins (3 pins starting point)
+// Selector binary switch (3 pole)
+#define SELECTOR_SW_BASE 11         // base pin (switch is 3-pin, base+2) switches to ground
+// #define SW_COMM_LOW                // switch common pin(s) are connected to 0v
+#define SW_COMM_HIGH                // switch common pin(s) are connected to 3.3v
 // ws2812 multicolour LED driving
 #ifdef WS2812
     #define WS2812_PIN 16           // chinese pico boards have ws2812 on pin 16
@@ -76,8 +80,8 @@
 // for PWM analog audio outputs
 #define PIN_PWM_1A 14               // A channel of PWM slice (left audio)
 #define PIN_PWM_1B 15               // B channel of PWM slice (right audio)
-#define PIN_PWM_2A 18               // A channel of PWM slice (left audio)
-#define PIN_PWM_2B 19               // B channel of PWM slice (right audio)
+#define PIN_PWM_2A 20               // A channel of PWM slice (left audio)
+#define PIN_PWM_2B 21               // B channel of PWM slice (right audio)
 #define PIN_PWM_3A 26               // A channel of PWM slice (left audio)
 #define PIN_PWM_3B 27               // B channel of PWM slice (right audio)
 #define PIN_PWM_4A 28               // A channel of PWM slice (left audio)
@@ -89,3 +93,4 @@ extern volatile uint32_t led_state; // current value last sent to WS2812 LED
 
 extern void core1_entry(void);      // main process for core 1, defined in "core1.c"
 extern void set_core1_info(void);   // set binary info for pins used by core1
+extern uint get_selector(void);     // return selector switch state in low 3 bits

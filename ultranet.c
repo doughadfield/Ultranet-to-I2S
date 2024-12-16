@@ -34,9 +34,25 @@
 
 volatile uint32_t samples[8];   // array of samples read from Ultranet stream
 
+void ultranet_gpio_init(void)
+{
+    int count;
+    for(count=SELECTOR_SW_BASE; count < (SELECTOR_SW_BASE+3);count++)
+    {
+        gpio_init(count);
+#ifdef SW_COMM_LOW                                          // switch common can be 0v or +3.3v
+        gpio_pull_up(count);                                // for switch common to +3.3v
+#else
+        gpio_pull_down(count);                              // for switch common to +3.3v
+#endif // SW_COMM_LOW
+    }
+#ifdef PICO_LED
+    gpio_init(PICO_LED);                                    // set LED pin as GPIO 
+    gpio_set_dir(PICO_LED, GPIO_OUT);                       // set LED pin as output
+#endif // PICO_LED
+}
 
 // state machine init functions (used to be defined in <prog>.pio file)
-
 void ultranet_pio_init(PIO pio, uint sm, uint pin)
 {
     gpio_set_dir(pin, false);                               // set ultranet pin as input
@@ -75,9 +91,11 @@ void ws2812_pio_init(PIO pio, uint sm, uint pin)            // Set up PIO SM for
 }
 #endif // WS2812
 
-// Timer callback for periodically turning off Ultranet detected LED
-// Outputs current state (as turned on by Ultranet stream code) then clears flag
-// If no Ultranet stream received, LED will turn off at next alarm tick
+/*
+* Timer callback for periodically turning off Ultranet detected LED
+*  Outputs current state (as turned on by Ultranet stream code) then clears flag
+* If no Ultranet stream received, LED will turn off at next alarm tick
+*/
 int64_t alarm_callback(alarm_id_t id, __unused void *repeatptr)
 {
 #ifdef WS2812
@@ -115,27 +133,46 @@ void set_binary_info(void)
     set_core1_info();                                       // info for pins used by core1
 }
 
+
+// read selector switch and return uint with switch positions in the 3 LSBs
+uint get_selector(void)
+{
+    static int sw_mask =((1<<SELECTOR_SW_BASE) | (1<<SELECTOR_SW_BASE+1) | (1<<SELECTOR_SW_BASE+2));
+
+#ifdef SW_COMM_LOW                                          // sw pulls gpio pins low, so invert sw result
+    return ((~gpio_get_all()) & sw_mask)>>SELECTOR_SW_BASE;
+#else                                                       // sw pulls gpio pins high, so non-inverted result
+    return (gpio_get_all() & sw_mask)>>SELECTOR_SW_BASE;
+#endif // SW_COMM_LOW
+}
+
 int main()
 {
     volatile uint32_t sample;                               // temp store for sample read from Ultranet stream
     const uint64_t repeat_us = STREAM_LED_RESET;            // Repeat time period for alarm to clear Ultranet stream LED
-
+    uint selector;                                          // Selector switch state
+ 
     set_binary_info();                                      // info for querying by picotool
     stdio_init_all();                                       // initialise SDK libraries and interfaces
     set_sys_clock_khz(CLOCKSPEED,false);                    // set cpu clock frequency
 
+#ifdef DEBUG
+    sleep_ms(5000);                                         // allow time for USB serial to connect
+#else
     sleep_ms(200);                                          // allow time for clocks etc. to settle
+#endif // DEBUG
 
-    ultranet_pio_init(UNET_PIO, UNET_SM, UNET_PIN);         // initialise and start ultranet state machine
+    selector = get_selector();                              // read selector switch once at boot time
+    if(selector & 0b100)                                    // Most significant switch bit selects Ultranet input stream pin
+        ultranet_pio_init(UNET_PIO, UNET_SM, UNETH_PIN);    // initialise and start ultranet state machine
+    else
+        ultranet_pio_init(UNET_PIO, UNET_SM, UNETL_PIN);    // initialise and start ultranet state machine
 
 #ifdef WS2812
     ws2812_pio_init(WS2812_PIO, WS2812_SM, WS2812_PIN);     // ws2812 output pio state machine
 #endif // WS2812
 
-#ifdef PICO_LED
-    gpio_init(PICO_LED);                                    // set LED pin as GPIO 
-    gpio_set_dir(PICO_LED, GPIO_OUT);                       // set LED pin as output
-#endif // PICO_LED
+    ultranet_gpio_init();                                   // initialise required GPIO pins
 
     add_alarm_in_us(repeat_us, alarm_callback, (void*)&repeat_us, false);  // start timer for stream LED blanking
 
