@@ -19,3 +19,7 @@ Thanks a lot to the authors of the two excellent projects above!
 
 Here is a pic of my prototype board. It's based on a PCB I made for Ultranet fan-out (one in, four out) as a "mini P16-D". I just use the input buffer chip (an MC3486) and the 5V power regulator. The rest of the board space I used to attach the pico (chinese mini knock-off) and the output decoder boards(PCM5102A modules from your favourite auction site).
 ![PicoUltranetDecoder](https://github.com/user-attachments/assets/e9e0c4d6-15a5-412d-a558-9ded5bb5acc3)
+
+In order to receive the Ultranet streams into the Pico, a line receiver IC needs to be used, to convert the differential signals from the Ultranet cable into single-ended TTL compatible pulses for the Pico. The following diagram shows a circuit I use for this purpose:
+
+[Schematic_UltranetInput_2025-01-01-2.pdf](https://github.com/user-attachments/files/18286932/Schematic_UltranetInput_2025-01-01-2.pdf)
