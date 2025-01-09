@@ -29,7 +29,7 @@
 #define VERSION "1.2"
 
 // conditional compilation switches for hardware options
-// #define DEBUG                    // enable debug code
+// #define DEBUG                    // enable debug code DEBUG DEBUG DEBUG
 #define WS2812                      // Our board has a ws2812 programmable LED
 #define MCLK                        // Enable MCLK clock for I2S devices
 
@@ -55,8 +55,8 @@
 #define I2S4_PINS 17                // base for I2S output pins (3 pins starting point)
 // Selector binary switch (3 pole)
 #define SELECTOR_SW_BASE 11         // base pin (switch is 3-pin, base+2) switches to ground
-// #define SW_COMM_LOW                // switch common pin(s) are connected to 0v
-#define SW_COMM_HIGH                // switch common pin(s) are connected to 3.3v
+#define SW_COMM_LOW                 // switch common pin(s) are connected to 0v
+// #define SW_COMM_HIGH             // switch common pin(s) are connected to 3.3v
 // ws2812 multicolour LED driving
 #ifdef WS2812
     #define WS2812_PIN 16           // chinese pico boards have ws2812 on pin 16

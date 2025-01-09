@@ -137,12 +137,12 @@ void set_binary_info(void)
 // read selector switch and return uint with switch positions in the 3 LSBs
 uint get_selector(void)
 {
-    static int sw_mask =((1<<SELECTOR_SW_BASE) | (1<<SELECTOR_SW_BASE+1) | (1<<SELECTOR_SW_BASE+2));
+    static uint sw_mask = 0b111 << SELECTOR_SW_BASE;        // Mask for selecting only switch bits from all GPIOs
 
 #ifdef SW_COMM_LOW                                          // sw pulls gpio pins low, so invert sw result
-    return ((~gpio_get_all()) & sw_mask)>>SELECTOR_SW_BASE;
+    return ((~gpio_get_all()) & sw_mask) >> SELECTOR_SW_BASE;
 #else                                                       // sw pulls gpio pins high, so non-inverted result
-    return (gpio_get_all() & sw_mask)>>SELECTOR_SW_BASE;
+    return (gpio_get_all() & sw_mask) >> SELECTOR_SW_BASE;
 #endif // SW_COMM_LOW
 }
 
@@ -159,14 +159,8 @@ int main()
 #ifdef DEBUG
     sleep_ms(5000);                                         // allow time for USB serial to connect
 #else
-    sleep_ms(200);                                          // allow time for clocks etc. to settle
+    sleep_ms(500);                                          // allow time for clocks etc. to settle
 #endif // DEBUG
-
-    selector = get_selector();                              // read selector switch once at boot time
-    if(selector & 0b100)                                    // Most significant switch bit selects Ultranet input stream pin
-        ultranet_pio_init(UNET_PIO, UNET_SM, UNETH_PIN);    // initialise and start ultranet state machine
-    else
-        ultranet_pio_init(UNET_PIO, UNET_SM, UNETL_PIN);    // initialise and start ultranet state machine
 
 #ifdef WS2812
     ws2812_pio_init(WS2812_PIO, WS2812_SM, WS2812_PIN);     // ws2812 output pio state machine
@@ -175,6 +169,16 @@ int main()
     ultranet_gpio_init();                                   // initialise required GPIO pins
 
     add_alarm_in_us(repeat_us, alarm_callback, (void*)&repeat_us, false);  // start timer for stream LED blanking
+
+    selector = get_selector();                              // read selector switch once at boot time
+#ifdef DEBUG
+    printf("Selector = %d\n", selector);
+#endif // DEBUG
+
+    if(selector & 0b100)                                    // Most significant switch bit selects Ultranet input stream pin
+        ultranet_pio_init(UNET_PIO, UNET_SM, UNETH_PIN);    // initialise and start ultranet state machine
+    else
+        ultranet_pio_init(UNET_PIO, UNET_SM, UNETL_PIN);    // initialise and start ultranet state machine
 
     multicore_launch_core1(core1_entry);                    // start core 1
 
