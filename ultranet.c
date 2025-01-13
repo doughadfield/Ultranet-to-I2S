@@ -102,7 +102,7 @@ int64_t alarm_callback(alarm_id_t id, __unused void *repeatptr)
     put_pixel(led_state);                                   // Output current sate of led_state flag to LED
 #endif // WS2812
 #ifdef PICO_LED
-    if((led_state & LED_STREAM_MASK) > 0)                   // led_state has been set by Ultranet stream code
+    if((led_state & ~LED_STREAM_MASK) > 0)                  // led_state has been set by Ultranet stream code
         gpio_put(PICO_LED, 1);                              // turn on LED when stream is detected
     else
         gpio_put(PICO_LED, 0);                              // or turn off if no stream detected
