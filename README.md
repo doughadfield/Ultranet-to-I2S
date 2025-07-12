@@ -23,3 +23,11 @@ Here is a pic of my prototype board. It's based on a PCB I made for Ultranet fan
 In order to receive the Ultranet streams into the Pico, a line receiver IC needs to be used, to convert the differential signals from the Ultranet cable into single-ended TTL compatible pulses for the Pico. The following diagram shows a circuit I use for this purpose:
 
 [Schematic_UltranetInput_2025-01-01-2.pdf](https://github.com/user-attachments/files/18286932/Schematic_UltranetInput_2025-01-01-2.pdf)
+
+To Do:
+  In the next few weeks I plan to test with current version of pico-sdk (2.1.1 at time of writing) and pico 2 (RP2350) now that I've actually purchased one!!
+
+
+Feedback:
+  Please let me know via comments if you have any issues with overclocking your pico - the code by default overclocks to a higher level than strictly necessary, so we could reduce that if anyone is getting issues (I never have, with a dozen or so cheap chinese pico knock-offs!!)
+  
