@@ -11,7 +11,7 @@ The project uses the Raspberry Pi Foundation Pico C/C++ SDK (V2.0.0) and Visual 
 
 I've borrowed PIO program ideas from two excellent github projects:
 
-https://github.com/elehobica/pico_spdif_rx - I modified the PIO program from this project, as the Ultranet decode (very similar to AES/EBU)
+https://github.com/elehobica/pico_spdif_rx - I modified the PIO program from this project, as the Ultranet protocol is very similar to AES/EBU
 
 https://github.com/nyh-workshop/rpi-pico-i2sExample - I used the I2S output encoder PIO program from this project
 
@@ -29,5 +29,5 @@ To Do:
 
 
 Feedback:
-  Please let me know via comments if you have any issues with overclocking your pico - the code by default overclocks to a higher level than strictly necessary, so we could reduce that if anyone is getting issues (I never have, with a dozen or so cheap chinese pico knock-offs!!)
+  Please let me know via comments if you have any issues with overclocking your pico - the code by default overclocks to a higher level than strictly necessary, and can be reduced easily if anyone is getting issues (I never have, with a dozen or so cheap chinese pico knock-offs!!). The current code overclocks to 172MHz, then divides by 7 in the Ultranet PIO input module. This gives the most accurate tracking of Ultranet signal edges as our sample period is 7 times shorter than the Ultranet bit period. I've tested at lower clock speeds (and dividing by corrispondingly lower amounts) but 172MHz seems very stable for every pico I've tried.
   
